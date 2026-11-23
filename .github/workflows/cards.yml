@@ -1,0 +1,52 @@
+name: Profil-Karten aktualisieren
+
+on:
+  schedule:
+    - cron: "17 4 * * *"   # täglich 05:17 / 06:17 Schweizer Zeit
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["scripts/**", "assets/**", "fonts/**", ".github/workflows/cards.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cards
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Abhängigkeiten installieren
+        run: pip install -r requirements.txt
+
+      - name: Beitragsdaten holen
+        env:
+          # Optional ein eigenes Token als Secret PROFILE_TOKEN hinterlegen,
+          # sonst genügt das Standard-Token der Action.
+          GH_TOKEN: ${{ secrets.PROFILE_TOKEN || secrets.GITHUB_TOKEN }}
+        run: python scripts/fetch_data.py
+
+      - name: Karten rendern (Hero, Kacheln, Aktivität, Repos, Graph)
+        run: python scripts/render_cards.py
+
+      - name: Karten committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data cards
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen."
+          else
+            git commit -m "Karten aktualisieren ($(date -u +%Y-%m-%d))"
+            git push
+          fi

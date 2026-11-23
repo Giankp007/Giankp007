@@ -1,0 +1,105 @@
+[
+ {
+  "name": "northwind-backend-spring",
+  "description": "Northwind REST-API – Customer, Category & Order. Spring Boot / JPA / PostgreSQL",
+  "url": "https://github.com/Giankp007/northwind-backend-spring",
+  "stargazerCount": 0,
+  "forkCount": 0,
+  "pushedAt": "2026-06-11T21:09:08Z",
+  "primaryLanguage": {
+   "name": "HTML",
+   "color": "#e34c26"
+  },
+  "languages": {
+   "nodes": [
+    {
+     "name": "HTML"
+    },
+    {
+     "name": "Java"
+    }
+   ]
+  }
+ },
+ {
+  "name": "northwind-frontend-react",
+  "description": "Northwind SPA – Kunden, Kategorien & Bestellungen. React 19 / TypeScript / Vite",
+  "url": "https://github.com/Giankp007/northwind-frontend-react",
+  "stargazerCount": 0,
+  "forkCount": 0,
+  "pushedAt": "2026-06-11T21:09:04Z",
+  "primaryLanguage": {
+   "name": "TypeScript",
+   "color": "#3178c6"
+  },
+  "languages": {
+   "nodes": [
+    {
+     "name": "TypeScript"
+    },
+    {
+     "name": "CSS"
+    },
+    {
+     "name": "JavaScript"
+    },
+    {
+     "name": "HTML"
+    }
+   ]
+  }
+ },
+ {
+  "name": "cloudnova",
+  "description": "CloudNova: 3-Tier-Produktkatalog (Nginx, Express, PostgreSQL) mit Docker Compose",
+  "url": "https://github.com/Giankp007/cloudnova",
+  "stargazerCount": 0,
+  "forkCount": 0,
+  "pushedAt": "2026-11-04T10:51:07Z",
+  "primaryLanguage": {
+   "name": "JavaScript",
+   "color": "#f1e05a"
+  },
+  "languages": {
+   "nodes": [
+    {
+     "name": "JavaScript"
+    },
+    {
+     "name": "Shell"
+    },
+    {
+     "name": "CSS"
+    },
+    {
+     "name": "HTML"
+    }
+   ]
+  }
+ },
+ {
+  "name": "BMWDealScanner",
+  "description": "🚗 Scanner für Schweizer Auto-Occasionen – Telegram-Alarm bei neuen Inseraten & Deals (AutoScout24; Python + Cloudflare Worker)",
+  "url": "https://github.com/Giankp007/BMWDealScanner",
+  "stargazerCount": 0,
+  "forkCount": 0,
+  "pushedAt": "2026-11-23T13:28:30Z",
+  "primaryLanguage": {
+   "name": "JavaScript",
+   "color": "#f1e05a"
+  },
+  "languages": {
+   "nodes": [
+    {
+     "name": "JavaScript"
+    },
+    {
+     "name": "Python"
+    },
+    {
+     "name": "Batchfile"
+    }
+   ]
+  }
+ }
+]
