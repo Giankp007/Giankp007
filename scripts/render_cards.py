@@ -42,7 +42,7 @@ MONTHS_DE = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Ok
 WEEKDAYS_DE = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 
 # Zeitplan: jede Karte startet etwas später, die Seite läuft von oben nach unten ab
-T_HERO, T_TILES, T_ACTIVITY, T_REPOS, T_GRAPH = 0.0, 1.3, 2.1, 3.4, 4.2
+T_HERO, T_TILES, T_ACTIVITY, T_REPOS, T_GRAPH = 0.0, 1.6, 2.3, 3.4, 4.1
 
 # --------------------------------------------------------------------------- Schriften
 
@@ -141,8 +141,7 @@ BASE_CSS = """
 .zoom{transform-box:fill-box;transform-origin:50% 50%;animation:zoom 1.1s cubic-bezier(.23,1,.32,1) both}
 .cell{animation:cell .5s ease-out both}
 .draw{animation:draw 1.2s cubic-bezier(.23,1,.32,1) both}
-.pulse{transform-box:fill-box;transform-origin:50% 50%;animation:pulse 2.2s ease-out infinite}
-.wiggle{animation:wiggle 4s ease-in-out infinite}
+.row{animation:fade .35s ease-out both}
 .static-only{display:none}
 @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
@@ -152,8 +151,6 @@ BASE_CSS = """
 @keyframes zoom{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 @keyframes cell{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @keyframes draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
-@keyframes pulse{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(2.8)}}
-@keyframes wiggle{0%,78%,100%{transform:translate(0,0)}83%{transform:translate(4px,-4px)}88%{transform:translate(0,0)}93%{transform:translate(3px,-3px)}}
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important}
   .anim-only{display:none}
@@ -165,7 +162,7 @@ STATIC_CSS = """
 .f{font-family:'F',Georgia,serif;font-weight:normal}
 .s{font-family:'S','Segoe UI',system-ui,sans-serif}
 .b{font-family:'B','Segoe UI',system-ui,sans-serif;font-weight:normal}
-.anim-only,.pulse{display:none}
+.anim-only{display:none}
 """
 
 
@@ -268,198 +265,228 @@ def stats(days):
 
 # --------------------------------------------------------------------------- Karten
 
+def pixel_portrait(path: Path, n: int = 64):
+    """Foto -> Pixel-Art im Website-Grün. Hintergrund (grau) wird per Flood-Fill
+    vom Rand entfernt, der Rest in 8 feste Helligkeitsstufen eingeteilt."""
+    from PIL import Image, ImageFilter
+    im = Image.open(path).convert("RGB").filter(ImageFilter.UnsharpMask(3, 180, 2))
+    small = im.resize((n, n), Image.LANCZOS)
+    pix = small.load()
+    lum, bgish = {}, {}
+    for y in range(n):
+        for x in range(n):
+            r, g, b = pix[x, y]
+            mx, mn = max(r, g, b), min(r, g, b)
+            sat = (mx - mn) / (mx + 1e-6)
+            lum[x, y] = .299 * r + .587 * g + .114 * b
+            bgish[x, y] = sat < .10 and 55 < lum[x, y] < 160
+    bg = set()
+    stack = [(x, y) for i in range(n) for (x, y) in ((0, i), (n - 1, i), (i, 0))]
+    while stack:
+        x, y = stack.pop()
+        if (x, y) in bg or not (0 <= x < n and 0 <= y < n) or not bgish[x, y]:
+            continue
+        bg.add((x, y))
+        stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    pal = [PINE_950, "#18382A", PINE_800, LEAF, LEAF_SOFT, "#7FA88D", SAGE, CREAM]
+    thr = [45, 70, 95, 125, 155, 185, 215]
+    return [[None if (x, y) in bg else pal[sum(lum[x, y] > t for t in thr)] for x in range(n)]
+            for y in range(n)]
+
+
 def hero():
     W, H = 880, 330
     t = T_HERO
     has_img = bool(C.PORTRAIT) and (ROOT / C.PORTRAIT).exists()
-    tx = 52
-    max_text_w = 520 if has_img else 760
+    tx = 56
+    max_text_w = 500 if has_img else 760
     b = [f'<defs><clipPath id="card"><rect width="{W}" height="{H}" rx="20"/></clipPath>'
          f'<linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">'
-         f'<stop offset="0" stop-color="{PINE_800}"/><stop offset="1" stop-color="{PINE_950}"/></linearGradient>'
-         f'<pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">'
-         f'<circle cx="2" cy="2" r="1.1" fill="{CREAM}" fill-opacity=".06"/></pattern></defs>',
-         f'<g clip-path="url(#card)"><rect width="{W}" height="{H}" fill="url(#glow)"/>'
-         f'<rect width="{W}" height="{H}" fill="url(#dots)"/>'
-         f'<circle cx="{W - 120}" cy="{H + 40}" r="230" fill="{LEAF_SOFT}" fill-opacity=".16"/></g>']
+         f'<stop offset="0" stop-color="{PINE_800}"/><stop offset="1" stop-color="{PINE_950}"/></linearGradient></defs>',
+         f'<g clip-path="url(#card)"><rect width="{W}" height="{H}" fill="url(#glow)"/></g>']
 
-    # Status-Pille mit pulsierendem Punkt
-    pill_w = BOLD.width(C.STATUS, 13) + 46
-    b.append(f'<g{anim("up", t + .1)}>'
-             f'<rect x="{tx}" y="44" width="{pill_w:.0f}" height="30" rx="15" fill="{CREAM}" fill-opacity=".07" '
-             f'stroke="{SAGE}" stroke-opacity=".35"/>'
-             f'<circle cx="{tx + 18}" cy="59" r="4.5" fill="#7FBE99"{anim("pulse", t + .9)}/>'
-             f'<circle cx="{tx + 18}" cy="59" r="4.5" fill="#7FBE99"/>'
-             + text(tx + 32, 63.5, C.STATUS, "b", 13, CREAM) + "</g>")
+    # Status als ruhige Zeile: keine Pille, kein Punkt
+    b.append(f'<g{anim("fade", t + .1)}>'
+             + text(tx, 82, C.STATUS.upper(), "b", 12, SAGE, ' letter-spacing="2.4"') + "</g>")
 
-    # Name: Wort für Wort, darüber ein wandernder Glanz (SMIL gradientTransform)
-    size, y = 70, 148
+    # Name: Wort für Wort, darüber ein langsamer Glanz (SMIL gradientTransform)
+    size, y = 66, 152
     x = tx
-    words = C.NAME.split()
-    for i, wd in enumerate(words):
+    for i, wd in enumerate(C.NAME.split()):
         b.append(f'<g{anim("up", t + .25 + i * .14)}>' + text(x, y, wd, "f", size, CREAM) + "</g>")
         x += SERIF.width(wd + " ", size)
     name_w = SERIF.width(C.NAME, size)
     if not STATIC:
         sweep = (f'<linearGradient id="shine" gradientUnits="userSpaceOnUse" x1="{tx}" y1="0" x2="{tx + 180}" y2="0">'
                  f'<stop offset="0" stop-color="#fff" stop-opacity="0"/>'
-                 f'<stop offset=".5" stop-color="#E9F5EC" stop-opacity=".95"/>'
+                 f'<stop offset=".5" stop-color="#E9F5EC" stop-opacity=".85"/>'
                  f'<stop offset="1" stop-color="#fff" stop-opacity="0"/>'
                  f'<animateTransform attributeName="gradientTransform" type="translate" '
-                 f'values="-200 0;{name_w + 40:.0f} 0;{name_w + 40:.0f} 0" keyTimes="0;.28;1" dur="5s" '
-                 f'begin="{t + 1.1:.2f}s" repeatCount="indefinite"/></linearGradient>')
+                 f'values="-200 0;{name_w + 40:.0f} 0;{name_w + 40:.0f} 0" keyTimes="0;.2;1" dur="8s" '
+                 f'begin="{t + 1.4:.2f}s" repeatCount="indefinite"/></linearGradient>')
         b.append(f'<defs>{sweep}</defs><g class="anim-only">'
                  + text(tx, y, C.NAME, "f", size, "url(#shine)") + "</g>")
 
-    # Unterstrich zeichnet sich
-    ul = 120
-    b.append(f'<line x1="{tx}" y1="{y + 22}" x2="{tx + ul}" y2="{y + 22}" stroke="{SAGE}" stroke-width="3" '
+    ul = 110
+    b.append(f'<line x1="{tx}" y1="{y + 22}" x2="{tx + ul}" y2="{y + 22}" stroke="{SAGE}" stroke-width="2.5" '
              f'stroke-linecap="round" stroke-dasharray="{ul}" '
              + (f'class="draw" style="--len:{ul};animation-delay:{t + .7:.2f}s"' if not STATIC else "")
              + "/>")
 
-    # Rolle + ein Satz über mich
-    yy = y + 62
-    for line in BOLD.wrap(C.ROLE, 16, max_text_w + 10):
-        b.append(f'<g{anim("up", t + .55)}>' + text(tx, yy, line, "b", 16, SAGE) + "</g>")
-        yy += 26
+    yy = y + 60
+    for line in BOLD.wrap(C.ROLE, 15.5, max_text_w + 20):
+        b.append(f'<g{anim("up", t + .55)}>' + text(tx, yy, line, "b", 15.5, SAGE) + "</g>")
+        yy += 24
     yy += 4
-    for i, line in enumerate(SANS.wrap(C.ABOUT, 17, max_text_w, 3)):
-        b.append(f'<g{anim("up", t + .7 + i * .06)}>' + text(tx, yy, line, "s", 17, CREAM_DIM) + "</g>")
-        yy += 25
+    for i, line in enumerate(SANS.wrap(C.ABOUT, 16.5, max_text_w, 3)):
+        b.append(f'<g{anim("up", t + .7 + i * .06)}>' + text(tx, yy, line, "s", 16.5, CREAM_DIM) + "</g>")
+        yy += 24
 
-    # Porträt (optional)
+    # Pixel-Porträt: quadratische Kachel, mittig in der Höhe; Zeilen bauen sich von oben auf
     if has_img:
-        img = base64.b64encode((ROOT / C.PORTRAIT).read_bytes()).decode()
-        s, px, py = 236, W - 236 - 52, (H - 236) / 2
-        b.append(f'<defs><clipPath id="pic"><rect x="{px}" y="{py}" width="{s}" height="{s}" rx="22"/></clipPath></defs>'
-                 f'<g{anim("zoom", t + .45)}>'
-                 f'<rect x="{px - 9}" y="{py - 9}" width="{s + 18}" height="{s + 18}" rx="28" fill="none" '
-                 f'stroke="{SAGE}" stroke-opacity=".45" stroke-width="1.5"/>'
-                 f'<image href="data:image/jpeg;base64,{img}" x="{px}" y="{py}" width="{s}" height="{s}" '
-                 f'clip-path="url(#pic)" preserveAspectRatio="xMidYMid slice"/></g>')
+        grid = pixel_portrait(ROOT / C.PORTRAIT)
+        n = len(grid)
+        box, pad = 250, 9
+        bx, by = W - 56 - box, (H - box) / 2
+        ps = (box - 2 * pad) / n
+        b.append(f'<defs><clipPath id="pic"><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18"/></clipPath></defs>'
+                 f'<g{anim("fade", t + .3)}><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18" '
+                 f'fill="{PINE_900}" stroke="{SAGE}" stroke-opacity=".3"/></g>'
+                 f'<g clip-path="url(#pic)" shape-rendering="crispEdges">')
+        ox, oy = bx + pad, by + pad
+        for ry, row in enumerate(grid):
+            rects, x0 = [], 0
+            while x0 < n:
+                c = row[x0]
+                x1 = x0
+                while x1 + 1 < n and row[x1 + 1] == c:
+                    x1 += 1
+                if c:
+                    rects.append(f'<rect x="{ox + x0 * ps:.2f}" y="{oy + ry * ps:.2f}" '
+                                 f'width="{(x1 - x0 + 1) * ps + .3:.2f}" height="{ps + .3:.2f}" fill="{c}"/>')
+                x0 = x1 + 1
+            if rects:
+                b.append(f'<g{anim("row", t + .4 + ry * .016)}>' + "".join(rects) + "</g>")
+        b.append("</g>")
     write("hero", svg(W, H, "".join(b), [SERIF, SANS, BOLD], f"{C.NAME}: {C.ROLE}"))
 
 
 def tiles():
-    W, H = 300, 220
+    W, H = 300, 210
     for i, tl in enumerate(C.TILES):
         t = T_TILES + i * .18
         a = tl["accent"]
         b = [f'<defs><clipPath id="c"><rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="18"/></clipPath></defs>',
              f'<g{anim("swing", t)}>',
              f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="18" fill="{PAPER_RAISE}"/>',
-             f'<rect x="0" y="0" width="{W}" height="7" fill="{a}" clip-path="url(#c)"/>',
+             f'<rect x="0" y="0" width="{W}" height="6" fill="{a}" clip-path="url(#c)"/>',
              f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="18" fill="none" stroke="{LINE}" stroke-width="1.5"/>',
-             text(26, 46, tl["kicker"], "b", 12, a, ' letter-spacing="2.2"'),
-             f'<circle cx="{W - 40}" cy="44" r="7" fill="none" stroke="{a}" stroke-width="2"{anim("pulse", t + 1.0)}/>',
-             f'<circle cx="{W - 40}" cy="44" r="7" fill="{a}"/>',
-             text(24, 98, tl["title"], "f", 36, INK)]
-        y = 130
-        for line in SANS.wrap(tl["text"], 15.5, W - 50):
-            b.append(text(26, y, line, "s", 15.5, MUTED))
-            y += 22
-        b.append(f'<line x1="26" x2="{W - 26}" y1="{H - 52}" y2="{H - 52}" stroke="{LINE}"/>')
+             text(26, 44, tl["kicker"], "b", 11.5, a, ' letter-spacing="2.2"'),
+             text(24, 92, tl["title"], "f", 34, INK)]
+        y = 122
+        for line in SANS.wrap(tl["text"], 15, W - 50):
+            b.append(text(26, y, line, "s", 15, MUTED))
+            y += 21
+        b.append(f'<line x1="26" x2="{W - 26}" y1="{H - 50}" y2="{H - 50}" stroke="{LINE}"/>')
         link = tl["link"]
-        while BOLD.width(link, 13.5) > W - 90:
+        while BOLD.width(link, 13) > W - 90:
             link = link[:-2]
-        b.append(text(26, H - 25, link, "b", 13.5, a))
-        b.append(f'<g{anim("wiggle", t + 2.4)}>' + text(W - 26, H - 23, "↗", "b", 20, a, anchor="end") + "</g>")
+        b.append(text(26, H - 23, link, "b", 13, a))
+        b.append(text(W - 26, H - 21, "↗", "b", 19, a, anchor="end"))
         b.append("</g>")
         write(tl["file"], svg(W, H, "".join(b), [SERIF, SANS, BOLD], f'{tl["title"]}: {tl["text"]}'))
 
 
 def activity(st, fetched: str):
-    W, H = 880, 360
+    W, H = 880, 236
     t = T_ACTIVITY
-    b = [f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="20" fill="{PAPER}" stroke="{LINE}" stroke-width="1.5"/>',
-         f'<g{anim("up", t)}>' + text(44, 62, "Beiträge pro Monat", "f", 30, INK)
-         + text(46, 90, f"Die letzten 12 Monate · Stand {fetched}", "s", 14.5, MUTED) + "</g>"]
+    b = [f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="18" fill="{PAPER}" stroke="{LINE}" stroke-width="1.5"/>',
+         f'<g{anim("up", t)}>' + text(40, 48, "Aktivität", "f", 21, INK)
+         + text(40 + SERIF.width("Aktivität", 21) + 12, 47, f"Beiträge pro Monat · Stand {fetched}", "s", 13, MUTED)
+         + "</g>"]
 
-    # Balken
     months = list(st["months"].items())
     mx = max(v for _, v in months) or 1
     best = max(range(len(months)), key=lambda i: months[i][1])
-    x0, base, chart_h, bw, gap = 46, 310, 170, 30, 13
-    b.append(f'<line x1="{x0 - 6}" x2="{x0 + 12 * (bw + gap) - gap + 6}" y1="{base}" y2="{base}" stroke="{LINE}" stroke-width="1.5"/>')
+    x0, base, chart_h, bw, gap = 42, 190, 100, 24, 12
+    b.append(f'<line x1="{x0 - 4}" x2="{x0 + 12 * (bw + gap) - gap + 4}" y1="{base}" y2="{base}" '
+             f'stroke="{LINE}" stroke-width="1.2"/>')
     for i, ((yr, mo), v) in enumerate(months):
         x = x0 + i * (bw + gap)
-        h = max(4, v / mx * chart_h) if v else 3
+        h = max(3, v / mx * chart_h) if v else 2
         col = LEAF if i == best else SAGE
-        b.append(f'<rect x="{x}" y="{base - h:.1f}" width="{bw}" height="{h:.1f}" rx="6" fill="{col}"'
-                 f'{anim("grow", t + .3 + i * .07)}/>')
-        lbl = MONTHS_DE[mo - 1]
-        b.append(text(x + bw / 2, base + 22, lbl, "b" if i == best else "s", 12.5,
+        b.append(f'<rect x="{x}" y="{base - h:.1f}" width="{bw}" height="{h:.1f}" rx="4" fill="{col}"'
+                 f'{anim("grow", t + .3 + i * .06)}/>')
+        b.append(text(x + bw / 2, base + 18, MONTHS_DE[mo - 1], "b" if i == best else "s", 11,
                       INK if i == best else MUTED, anchor="middle"))
         if i == best:
-            by = base - h - 14
-            vw = BOLD.width(str(v), 14) + 20
-            b.append(f'<g{anim("pop", t + .3 + 12 * .07 + .35)}>'
-                     f'<rect x="{x + bw / 2 - vw / 2:.1f}" y="{by - 19:.1f}" width="{vw:.1f}" height="26" rx="13" fill="{PINE_900}"/>'
-                     + text(x + bw / 2, by - 1.5, str(v), "b", 14, CREAM, anchor="middle") + "</g>")
+            b.append(f'<g{anim("fade", t + 1.2)}>'
+                     + text(x + bw / 2, base - h - 7, str(v), "b", 12, PINE_800, anchor="middle") + "</g>")
 
-    # Kennzahlen rechts
-    sx = 590
-    b.append(f'<line x1="{sx - 26}" x2="{sx - 26}" y1="44" y2="{H - 44}" stroke="{LINE}"/>')
+    # Kennzahlen als 2x2-Raster
+    sx = 520
+    b.append(f'<line x1="{sx - 28}" x2="{sx - 28}" y1="76" y2="{H - 28}" stroke="{LINE}"/>')
     bd, bc = st["busiest"]
-    items = [
+    cells = [
         ("Beiträge im Jahr", st["total"], None),
-        ("Aktuelle Serie", st["current"], f"längste: {st['longest']} Tage"),
+        ("Aktuelle Serie", st["current"], f"Tage · längste {st['longest']}"),
         ("Aktive Tage", st["active"], f"von {st['ndays']}"),
+        ("Aktivster Tag", None, f"{bc} Beiträge"),
     ]
-    y = 70
-    for i, (lbl, val, sub) in enumerate(items):
-        tt = t + .5 + i * .15
-        b.append(f'<g{anim("up", tt)}>' + text(sx, y, lbl.upper(), "b", 11.5, MUTED, ' letter-spacing="1.6"') + "</g>")
-        b.append(f'<g{anim("fade", tt)}>' + counter(sx, y + 38, val, tt + .2, "f", 36, PINE_800)
-                 + "</g>")
-        if sub:
-            vw = SERIF.width(f"{val:,}".replace(",", "'"), 36)
-            b.append(f'<g{anim("fade", tt + .9)}>' + text(sx + vw + 12, y + 37, sub, "s", 13.5, MUTED) + "</g>")
-        y += 74
-    b.append(f'<g{anim("up", t + 1.05)}>'
-             + text(sx, y, "AKTIVSTER TAG", "b", 11.5, MUTED, ' letter-spacing="1.6"')
-             + text(sx, y + 27, f"{WEEKDAYS_DE[bd.weekday()]}, {bd.day}. {MONTHS_DE[bd.month - 1]} {bd.year}", "b", 17, INK)
-             + text(sx, y + 49, f"{bc} Beiträge an einem Tag", "s", 13.5, MUTED) + "</g>")
+    for i, (lbl, val, sub) in enumerate(cells):
+        cx = sx + (i % 2) * 180
+        cy = 92 + (i // 2) * 72
+        tt = t + .4 + i * .12
+        b.append(f'<g{anim("up", tt)}>' + text(cx, cy, lbl.upper(), "b", 10.5, MUTED, ' letter-spacing="1.5"') + "</g>")
+        if val is not None:
+            b.append(f'<g{anim("fade", tt)}>' + counter(cx, cy + 30, val, tt + .2, "f", 26, PINE_800) + "</g>")
+            vw = SERIF.width(f"{val:,}".replace(",", "'"), 26)
+            if sub:
+                b.append(f'<g{anim("fade", tt + .8)}>' + text(cx + vw + 8, cy + 29, sub, "s", 12, MUTED) + "</g>")
+        else:
+            day = f"{bd.day}. {MONTHS_DE[bd.month - 1]} {bd.year}"
+            b.append(f'<g{anim("fade", tt)}>' + text(cx, cy + 29, day, "f", 21, PINE_800) + "</g>")
+            b.append(f'<g{anim("fade", tt + .8)}>'
+                     + text(cx, cy + 48, f"{WEEKDAYS_DE[bd.weekday()]} · {sub}", "s", 12, MUTED) + "</g>")
     write("activity", svg(W, H, "".join(b), [SERIF, SANS, BOLD],
                           f"{st['total']} Beiträge in 12 Monaten, Serie {st['current']} Tage"))
 
 
 def repos():
     data = json.loads((ROOT / "data" / "repos.json").read_text(encoding="utf-8"))
-    W, H = 430, 170
+    data = [r for r in data if f"{C.USER}/{r['name']}" in C.FEATURED_REPOS]
+    W, H = 300, 196
     for i, r in enumerate(data):
         t = T_REPOS + i * .14
         lang = r.get("primaryLanguage") or {"name": "", "color": MUTED}
         name = r["name"]
-        size = 23
-        while SERIF.width(name, size) > W - 80 and size > 15:
-            size -= 1
+        size = 21
+        while SERIF.width(name, size) > W - 48 - 44 and size > 13:
+            size -= .5
         b = [f'<g{anim("up", t)}>',
              f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="16" fill="{PAPER_RAISE}" stroke="{LINE}" stroke-width="1.5"/>',
-             # Repo-Symbol
-             f'<g transform="translate(24 28)" fill="none" stroke="{LEAF}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
+             f'<g transform="translate(22 26)" fill="none" stroke="{LEAF}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
              f'<path d="M3 2.5h10.5v13H5a2 2 0 0 0-2 2z"/><path d="M3 17.5a2 2 0 0 1 2-2h8.5"/></g>',
-             text(52, 45, name, "f", size, INK),
-             f'<g{anim("wiggle", t + 3)}>' + text(W - 24, 46, "↗", "b", 19, LEAF, anchor="end") + "</g>"]
-        y = 80
+             text(48, 43, name, "f", size, INK),
+             text(W - 22, 44, "↗", "b", 17, LEAF, anchor="end")]
+        y = 76
         desc = "".join(ch for ch in (r.get("description") or "") if ord(ch) in SANS.cmap).strip()
-        for line in SANS.wrap(desc, 14.5, W - 48, 2):
-            b.append(text(24, y, line, "s", 14.5, MUTED))
-            y += 21
-        ul = W - 48
-        b.append(f'<line x1="24" x2="{W - 24}" y1="{H - 44}" y2="{H - 44}" stroke="{LINE}" stroke-dasharray="{ul}"'
+        for line in SANS.wrap(desc, 13.5, W - 44, 3):
+            b.append(text(22, y, line, "s", 13.5, MUTED))
+            y += 20
+        ul = W - 44
+        b.append(f'<line x1="22" x2="{W - 22}" y1="{H - 42}" y2="{H - 42}" stroke="{LINE}" stroke-dasharray="{ul}"'
                  + (f' class="draw" style="--len:{ul};animation-delay:{t + .3:.2f}s"' if not STATIC else "") + "/>")
-        fx = 24
+        fx = 22
         if lang["name"]:
-            b.append(f'<circle cx="{fx + 6}" cy="{H - 22.5}" r="6" fill="{lang["color"] or MUTED}"/>')
-            b.append(text(fx + 18, H - 18, lang["name"], "b", 13, INK))
-            fx += 18 + BOLD.width(lang["name"], 13) + 20
+            b.append(f'<circle cx="{fx + 5}" cy="{H - 21.5}" r="5" fill="{lang["color"] or MUTED}"/>')
+            b.append(text(fx + 16, H - 17, lang["name"], "b", 12.5, INK))
+            fx += 16 + BOLD.width(lang["name"], 12.5) + 14
         others = [n["name"] for n in r["languages"]["nodes"] if n["name"] != lang["name"]][:2]
         if others:
-            b.append(text(fx, H - 18, " · ".join(others), "s", 13, MUTED))
+            b.append(text(fx, H - 17, " · ".join(others), "s", 12.5, MUTED))
         if r["stargazerCount"]:
-            b.append(text(W - 24, H - 18, f"★ {r['stargazerCount']}", "b", 13, INK, anchor="end"))
+            b.append(text(W - 22, H - 17, f"★ {r['stargazerCount']}", "b", 12.5, INK, anchor="end"))
         b.append("</g>")
         write(f"repo-{name.lower()}", svg(W, H, "".join(b), [SERIF, SANS, BOLD], f"{name}: {r.get('description') or ''}"))
     return data
@@ -469,9 +496,9 @@ def graph(raw, days):
     weeks = raw["weeks"]
     cell, gap = 12, 3.2
     step = cell + gap
-    gx, gy = 70, 92
+    gx, gy = 70, 84
     W = int(gx + len(weeks) * step + 36)
-    H = 262
+    H = 246
     t = T_GRAPH
     nz = sorted(c for _, c in days if c > 0)
 
@@ -491,9 +518,9 @@ def graph(raw, days):
 
     total = raw["total"]
     b = [f'<rect x="1" y="1" width="{W - 2}" height="{H - 2}" rx="20" fill="{PAPER}" stroke="{LINE}" stroke-width="1.5"/>',
-         f'<g{anim("up", t)}>' + text(44, 54, "Beitragsgraph", "f", 26, INK) + "</g>",
-         f'<g{anim("fade", t + .1)}>' + counter(W - 40, 54, total, t + .2, "f", 26, PINE_800, anchor="end")
-         + text(W - 44 - SERIF.width(f"{total:,}".replace(",", "'"), 26), 53, "Beiträge im letzten Jahr ", "s", 14, MUTED,
+         f'<g{anim("up", t)}>' + text(40, 48, "Beitragsgraph", "f", 21, INK) + "</g>",
+         f'<g{anim("fade", t + .1)}>' + counter(W - 40, 49, total, t + .2, "f", 21, PINE_800, anchor="end")
+         + text(W - 44 - SERIF.width(f"{total:,}".replace(",", "'"), 21), 48, "Beiträge im letzten Jahr ", "s", 13, MUTED,
                 anchor="end") + "</g>"]
     for i, wd in ((0, "Mo"), (2, "Mi"), (4, "Fr")):
         b.append(text(gx - 12, gy + i * step + cell - 2, wd, "s", 11, MUTED, anchor="end"))

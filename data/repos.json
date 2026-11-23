@@ -76,30 +76,5 @@
     }
    ]
   }
- },
- {
-  "name": "BMWDealScanner",
-  "description": "🚗 Scanner für Schweizer Auto-Occasionen – Telegram-Alarm bei neuen Inseraten & Deals (AutoScout24; Python + Cloudflare Worker)",
-  "url": "https://github.com/Giankp007/BMWDealScanner",
-  "stargazerCount": 0,
-  "forkCount": 0,
-  "pushedAt": "2026-11-23T13:28:30Z",
-  "primaryLanguage": {
-   "name": "JavaScript",
-   "color": "#f1e05a"
-  },
-  "languages": {
-   "nodes": [
-    {
-     "name": "JavaScript"
-    },
-    {
-     "name": "Python"
-    },
-    {
-     "name": "Batchfile"
-    }
-   ]
-  }
  }
 ]

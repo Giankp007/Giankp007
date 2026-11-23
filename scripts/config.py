@@ -6,7 +6,8 @@ NAME = "Gian Kappeler"
 STATUS = "Offen für ein IT-Praktikum"
 ROLE = "Informatiker EFZ in Ausbildung · Quereinsteiger aus der Logistik"
 ABOUT = "Ich baue Web-Apps, Desktop-Tools und APIs, vom Backend bis zur fertigen Website."
-PORTRAIT = "assets/portrait.jpg"  # leer lassen ("") für Hero ohne Bild
+PORTRAIT = "assets/portrait-src.jpg"  # wird als Pixel-Art gezeichnet; "" = Hero ohne Bild
+# Ausschnitt: quadratisch, Gesicht in der Mitte (aus Pictures/Bewerbungsfoto.png)
 
 # Drei verlinkte Kacheln (Reihenfolge = links nach rechts)
 TILES = [
@@ -25,5 +26,4 @@ FEATURED_REPOS = [
     "Giankp007/northwind-backend-spring",
     "Giankp007/northwind-frontend-react",
     "Giankp007/cloudnova",
-    "Giankp007/BMWDealScanner",
 ]

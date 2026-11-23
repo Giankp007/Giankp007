@@ -6,9 +6,8 @@
 
 <img src="./cards/activity.svg" width="100%" alt="Beiträge pro Monat, Serie, aktive Tage und aktivster Tag" />
 
-<a href="https://github.com/Giankp007/northwind-backend-spring"><img src="./cards/repo-northwind-backend-spring.svg" width="49.5%" alt="northwind-backend-spring" /></a>
-<a href="https://github.com/Giankp007/northwind-frontend-react"><img src="./cards/repo-northwind-frontend-react.svg" width="49.5%" alt="northwind-frontend-react" /></a>
-<a href="https://github.com/Giankp007/cloudnova"><img src="./cards/repo-cloudnova.svg" width="49.5%" alt="cloudnova" /></a>
-<a href="https://github.com/Giankp007/BMWDealScanner"><img src="./cards/repo-bmwdealscanner.svg" width="49.5%" alt="BMWDealScanner" /></a>
+<a href="https://github.com/Giankp007/northwind-backend-spring"><img src="./cards/repo-northwind-backend-spring.svg" width="32.5%" alt="northwind-backend-spring" /></a>
+<a href="https://github.com/Giankp007/northwind-frontend-react"><img src="./cards/repo-northwind-frontend-react.svg" width="32.5%" alt="northwind-frontend-react" /></a>
+<a href="https://github.com/Giankp007/cloudnova"><img src="./cards/repo-cloudnova.svg" width="32.5%" alt="cloudnova" /></a>
 
 <img src="./cards/graph.svg" width="100%" alt="Beitragsgraph der letzten 12 Monate" />
