@@ -265,35 +265,6 @@ def stats(days):
 
 # --------------------------------------------------------------------------- Karten
 
-def pixel_portrait(path: Path, n: int = 64):
-    """Foto -> Pixel-Art im Website-Grün. Hintergrund (grau) wird per Flood-Fill
-    vom Rand entfernt, der Rest in 8 feste Helligkeitsstufen eingeteilt."""
-    from PIL import Image, ImageFilter
-    im = Image.open(path).convert("RGB").filter(ImageFilter.UnsharpMask(3, 180, 2))
-    small = im.resize((n, n), Image.LANCZOS)
-    pix = small.load()
-    lum, bgish = {}, {}
-    for y in range(n):
-        for x in range(n):
-            r, g, b = pix[x, y]
-            mx, mn = max(r, g, b), min(r, g, b)
-            sat = (mx - mn) / (mx + 1e-6)
-            lum[x, y] = .299 * r + .587 * g + .114 * b
-            bgish[x, y] = sat < .10 and 55 < lum[x, y] < 160
-    bg = set()
-    stack = [(x, y) for i in range(n) for (x, y) in ((0, i), (n - 1, i), (i, 0))]
-    while stack:
-        x, y = stack.pop()
-        if (x, y) in bg or not (0 <= x < n and 0 <= y < n) or not bgish[x, y]:
-            continue
-        bg.add((x, y))
-        stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
-    pal = [PINE_950, "#18382A", PINE_800, LEAF, LEAF_SOFT, "#7FA88D", SAGE, CREAM]
-    thr = [45, 70, 95, 125, 155, 185, 215]
-    return [[None if (x, y) in bg else pal[sum(lum[x, y] > t for t in thr)] for x in range(n)]
-            for y in range(n)]
-
-
 def hero():
     W, H = 880, 330
     t = T_HERO
@@ -345,16 +316,17 @@ def hero():
         b.append(f'<g{anim("up", t + .7 + i * .06)}>' + text(tx, yy, line, "s", 16.5, CREAM_DIM) + "</g>")
         yy += 24
 
-    asc = ROOT / "assets" / "portrait-ascii.png"
-    if has_img and C.PORTRAIT_STYLE == "ascii" and asc.exists():
-        # Zeichen-Porträt: vorgezeichnete PNG, in Streifen von oben nach unten eingeblendet
+    pic = ROOT / "assets" / f"portrait-{C.PORTRAIT_STYLE}.png"
+    if has_img and pic.exists():
+        # vorgezeichnetes Porträt (scripts/make_portrait.py), in Streifen von oben eingeblendet
         box, pad, strips = 250, 9, 32
         bx, by = W - 56 - box, (H - box) / 2
         inner = box - 2 * pad
-        data = base64.b64encode(asc.read_bytes()).decode()
+        data = base64.b64encode(pic.read_bytes()).decode()
         sh = inner / strips
-        defs = [f'<image id="asc" href="data:image/png;base64,{data}" x="{bx + pad}" y="{by + pad}" '
-                f'width="{inner}" height="{inner}"/>']
+        crisp = ' style="image-rendering:crisp-edges;image-rendering:pixelated"' if C.PORTRAIT_STYLE == "pixel" else ""
+        defs = [f'<image id="pic" href="data:image/png;base64,{data}" x="{bx + pad}" y="{by + pad}" '
+                f'width="{inner}" height="{inner}"{crisp}/>']
         for k in range(strips):
             defs.append(f'<clipPath id="s{k}"><rect x="{bx}" y="{by + pad + k * sh - .2:.2f}" width="{box}" '
                         f'height="{sh + .4:.2f}"/></clipPath>')
@@ -362,33 +334,7 @@ def hero():
                  f'<g{anim("fade", t + .3)}><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18" '
                  f'fill="{PINE_900}" stroke="{SAGE}" stroke-opacity=".3"/></g>')
         for k in range(strips):
-            b.append(f'<g clip-path="url(#s{k})"><g{anim("row", t + .4 + k * .045)}><use href="#asc"/></g></g>')
-    elif has_img:
-        # Pixel-Porträt: quadratische Kachel, mittig in der Höhe; Zeilen bauen sich von oben auf
-        grid = pixel_portrait(ROOT / C.PORTRAIT, C.PIXEL_RES)
-        n = len(grid)
-        box, pad = 250, 9
-        bx, by = W - 56 - box, (H - box) / 2
-        ps = (box - 2 * pad) / n
-        b.append(f'<defs><clipPath id="pic"><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18"/></clipPath></defs>'
-                 f'<g{anim("fade", t + .3)}><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18" '
-                 f'fill="{PINE_900}" stroke="{SAGE}" stroke-opacity=".3"/></g>'
-                 f'<g clip-path="url(#pic)" shape-rendering="crispEdges">')
-        ox, oy = bx + pad, by + pad
-        for ry, row in enumerate(grid):
-            rects, x0 = [], 0
-            while x0 < n:
-                c = row[x0]
-                x1 = x0
-                while x1 + 1 < n and row[x1 + 1] == c:
-                    x1 += 1
-                if c:
-                    rects.append(f'<rect x="{ox + x0 * ps:.2f}" y="{oy + ry * ps:.2f}" '
-                                 f'width="{(x1 - x0 + 1) * ps + .3:.2f}" height="{ps + .3:.2f}" fill="{c}"/>')
-                x0 = x1 + 1
-            if rects:
-                b.append(f'<g{anim("row", t + .4 + ry * .016)}>' + "".join(rects) + "</g>")
-        b.append("</g>")
+            b.append(f'<g clip-path="url(#s{k})"><g{anim("row", t + .4 + k * .045)}><use href="#pic"/></g></g>')
     write("hero", svg(W, H, "".join(b), [SERIF, SANS, BOLD], f"{C.NAME}: {C.ROLE}"))
 
 

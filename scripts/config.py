@@ -7,10 +7,8 @@ STATUS = "Offen für ein IT-Praktikum"
 ROLE = "Informatiker EFZ in Ausbildung · Quereinsteiger aus der Logistik"
 ABOUT = ""  # optionaler Satz unter der Rolle; leer = keiner
 PORTRAIT = "assets/portrait-src.jpg"  # Ausschnitt quadratisch, Gesicht mittig; "" = Hero ohne Bild
-# "ascii": Zeichen-Porträt aus assets/portrait-ascii.png (neu erzeugen: python scripts/make_portrait.py)
-# "pixel": Pixel-Art, Auflösung über PIXEL_RES
-PORTRAIT_STYLE = "ascii"
-PIXEL_RES = 112
+# Porträt-Stil: "pixel" oder "ascii". Neu zeichnen mit: python scripts/make_portrait.py pixel|ascii
+PORTRAIT_STYLE = "pixel"
 
 # Drei verlinkte Kacheln (Reihenfolge = links nach rechts)
 TILES = [
