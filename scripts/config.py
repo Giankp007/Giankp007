@@ -5,9 +5,12 @@ USER = "Giankp007"
 NAME = "Gian Kappeler"
 STATUS = "Offen für ein IT-Praktikum"
 ROLE = "Informatiker EFZ in Ausbildung · Quereinsteiger aus der Logistik"
-ABOUT = "Ich baue Web-Apps, Desktop-Tools und APIs, vom Backend bis zur fertigen Website."
-PORTRAIT = "assets/portrait-src.jpg"  # wird als Pixel-Art gezeichnet; "" = Hero ohne Bild
-# Ausschnitt: quadratisch, Gesicht in der Mitte (aus Pictures/Bewerbungsfoto.png)
+ABOUT = ""  # optionaler Satz unter der Rolle; leer = keiner
+PORTRAIT = "assets/portrait-src.jpg"  # Ausschnitt quadratisch, Gesicht mittig; "" = Hero ohne Bild
+# "ascii": Zeichen-Porträt aus assets/portrait-ascii.png (neu erzeugen: python scripts/make_portrait.py)
+# "pixel": Pixel-Art, Auflösung über PIXEL_RES
+PORTRAIT_STYLE = "ascii"
+PIXEL_RES = 112
 
 # Drei verlinkte Kacheln (Reihenfolge = links nach rechts)
 TILES = [
@@ -15,7 +18,7 @@ TILES = [
      "text": "Werdegang, Projekte und Technik", "link": "gian-kappeler.ch",
      "url": "https://www.gian-kappeler.ch/", "accent": "#34684C"},
     {"file": "tile-kapprompt", "kicker": "PROJEKT", "title": "Kapprompt",
-     "text": "Reise durch die KI-Welt für KMU", "link": "kapprompt.ch",
+     "text": "Reise durch die KI-Welt", "link": "kapprompt.ch",
      "url": "https://kapprompt.ch", "accent": "#4E8465"},
     {"file": "tile-linkedin", "kicker": "KONTAKT", "title": "LinkedIn",
      "text": "Vernetzen oder Praktikum anfragen", "link": "linkedin.com/in/gian-kappeler",

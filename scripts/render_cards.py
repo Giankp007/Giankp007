@@ -305,12 +305,15 @@ def hero():
          f'<stop offset="0" stop-color="{PINE_800}"/><stop offset="1" stop-color="{PINE_950}"/></linearGradient></defs>',
          f'<g clip-path="url(#card)"><rect width="{W}" height="{H}" fill="url(#glow)"/></g>']
 
+    # ohne ABOUT-Satz rutscht der Textblock nach unten, damit er mittig steht
+    dy = 22 if not C.ABOUT.strip() else 0
+
     # Status als ruhige Zeile: keine Pille, kein Punkt
     b.append(f'<g{anim("fade", t + .1)}>'
-             + text(tx, 82, C.STATUS.upper(), "b", 12, SAGE, ' letter-spacing="2.4"') + "</g>")
+             + text(tx, 82 + dy, C.STATUS.upper(), "b", 12, SAGE, ' letter-spacing="2.4"') + "</g>")
 
     # Name: Wort für Wort, darüber ein langsamer Glanz (SMIL gradientTransform)
-    size, y = 66, 152
+    size, y = 66, 152 + dy
     x = tx
     for i, wd in enumerate(C.NAME.split()):
         b.append(f'<g{anim("up", t + .25 + i * .14)}>' + text(x, y, wd, "f", size, CREAM) + "</g>")
@@ -338,13 +341,31 @@ def hero():
         b.append(f'<g{anim("up", t + .55)}>' + text(tx, yy, line, "b", 15.5, SAGE) + "</g>")
         yy += 24
     yy += 4
-    for i, line in enumerate(SANS.wrap(C.ABOUT, 16.5, max_text_w, 3)):
+    for i, line in enumerate(SANS.wrap(C.ABOUT, 16.5, max_text_w, 3) if C.ABOUT.strip() else []):
         b.append(f'<g{anim("up", t + .7 + i * .06)}>' + text(tx, yy, line, "s", 16.5, CREAM_DIM) + "</g>")
         yy += 24
 
-    # Pixel-Porträt: quadratische Kachel, mittig in der Höhe; Zeilen bauen sich von oben auf
-    if has_img:
-        grid = pixel_portrait(ROOT / C.PORTRAIT)
+    asc = ROOT / "assets" / "portrait-ascii.png"
+    if has_img and C.PORTRAIT_STYLE == "ascii" and asc.exists():
+        # Zeichen-Porträt: vorgezeichnete PNG, in Streifen von oben nach unten eingeblendet
+        box, pad, strips = 250, 9, 32
+        bx, by = W - 56 - box, (H - box) / 2
+        inner = box - 2 * pad
+        data = base64.b64encode(asc.read_bytes()).decode()
+        sh = inner / strips
+        defs = [f'<image id="asc" href="data:image/png;base64,{data}" x="{bx + pad}" y="{by + pad}" '
+                f'width="{inner}" height="{inner}"/>']
+        for k in range(strips):
+            defs.append(f'<clipPath id="s{k}"><rect x="{bx}" y="{by + pad + k * sh - .2:.2f}" width="{box}" '
+                        f'height="{sh + .4:.2f}"/></clipPath>')
+        b.append("<defs>" + "".join(defs) + "</defs>"
+                 f'<g{anim("fade", t + .3)}><rect x="{bx}" y="{by}" width="{box}" height="{box}" rx="18" '
+                 f'fill="{PINE_900}" stroke="{SAGE}" stroke-opacity=".3"/></g>')
+        for k in range(strips):
+            b.append(f'<g clip-path="url(#s{k})"><g{anim("row", t + .4 + k * .045)}><use href="#asc"/></g></g>')
+    elif has_img:
+        # Pixel-Porträt: quadratische Kachel, mittig in der Höhe; Zeilen bauen sich von oben auf
+        grid = pixel_portrait(ROOT / C.PORTRAIT, C.PIXEL_RES)
         n = len(grid)
         box, pad = 250, 9
         bx, by = W - 56 - box, (H - box) / 2
